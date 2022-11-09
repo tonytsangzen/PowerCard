@@ -1,0 +1,14 @@
+temp
+toolchain
+
+
+*/*.o
+*/*.elf
+*/*.map
+*/*.hex
+*/*.bin
+
+Makefile
+CMakeCache.txt
+CMakeFiles
+cmake_install.cmake
