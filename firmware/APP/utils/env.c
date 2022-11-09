@@ -71,7 +71,7 @@ int EnvLoadInt(int id){
 	EnvItem item;
 	EnvLoad(id, &item);
 	if(item.id == id){
-		value = atoi(item.data);
+		value = atoi((char*)item.data);
 	}
 	return value;
 }
@@ -80,7 +80,7 @@ void EnvSaveInt(int id, int value){
 	EnvItem item;
 	item.id = id;
 	item.sum = id;
-	sprintf(item.data, "%d", value);
+	sprintf((char*)item.data, "%d", value);
 	for(int j = 0; j < sizeof(item.data);  j++)
 		item.sum += item.data[j];
 	EnvSave(id, &item);
@@ -93,7 +93,7 @@ float EnvLoadFloat(int id){
 	EnvItem item;
 	EnvLoad(id, &item);
 	if(item.id == id){
-		value = atof(item.data);
+		value = atof((char*)item.data);
 	}
 	return value;
 }
@@ -102,7 +102,7 @@ void EnvSaveFloat(int id, float value){
 	EnvItem item;
 	item.id = id;
 	item.sum = id;
-	sprintf(item.data, "%f", value);
+	sprintf((char*)item.data, "%f", value);
 	for(int j = 0; j < sizeof(item.data);  j++)
 		item.sum += item.data[j];
 	EnvSave(id, &item);

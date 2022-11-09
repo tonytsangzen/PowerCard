@@ -55,7 +55,7 @@ void MenuShowDebug(char* info){
 }
 
 void MenuRefresh(void){
-	char temp[16];
+	char temp[64];
 	menu.blick++;
 	menu.blick%=4;
 
@@ -65,13 +65,13 @@ void MenuRefresh(void){
 		}
 	}
 
-	sprintf(temp, "Input  :     %dV", menu.inputVoltage/1000);
+	sprintf(temp, "Input  :     %dV", (int)(menu.inputVoltage/1000));
 	DrawString(frameBuffer, 0, 2, temp);
 	if(menu.mode == 1 && menu.blick > 1){
 		sprintf(temp, "Output :       ");
 		DrawString(frameBuffer, 0, 3, temp);
 	}else{
-		sprintf(temp, "Output : %4d.%1dV", menu.voltage/1000, menu.voltage/100 - (menu.voltage/1000) * 10);
+		sprintf(temp, "Output : %4d.%1dV", (int)(menu.voltage/1000), (int)(menu.voltage/100 - (menu.voltage/1000) * 10));
 		DrawString(frameBuffer, 0, 3, temp);
 	}
 
@@ -79,7 +79,7 @@ void MenuRefresh(void){
 		sprintf(temp, "Current:      ");
 		DrawString(frameBuffer, 0, 4, temp);
 	}else{
-		sprintf(temp, "Current: %5dmA", menu.current);
+		sprintf(temp, "Current: %5dmA", (int)(menu.current));
 		DrawString(frameBuffer, 0, 4, temp);
 	}
 
@@ -87,7 +87,7 @@ void MenuRefresh(void){
 		sprintf(temp, "                ");
 		DrawString(frameBuffer, 0, 5, temp);
 	}else{
-		sprintf(temp, "Power  : %5dmW", menu.current * menu.voltage/1000);
+		sprintf(temp, "Power  : %5dmW", (int)(menu.current * menu.voltage/1000));
 	}
 	DrawString(frameBuffer, 0, 5, temp);
 

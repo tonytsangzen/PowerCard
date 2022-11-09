@@ -4,6 +4,7 @@
 #include "utils/fir.h"
 #include "utils/avg.h"
 #include "utils/env.h"
+#include "power_card.h"
 
 static short RoughCalib_Value = 0;
 static short voltage = 0;
@@ -163,7 +164,7 @@ void PowerCardSetCurrentLimit(int ma){
 }
 
 
-int PowerCardRunAdc(){
+void PowerCardRunAdc(){
 
 	short vol = 0;
 	short cur = 0;
@@ -195,7 +196,7 @@ int PowerCardRunAdc(){
 
 #define POLL_INTERVAL 1
 
-int PowerCardPoll(void){
+void PowerCardPoll(void){
 
 	static uint32_t lastTick = 0;
 	uint32_t now = TMOS_GetSystemClock();

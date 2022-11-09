@@ -14,6 +14,8 @@
  * READ AND YOU AGREE TO THE LIMITED TERMS AND CONDITIONS. BY USING THIS
  * SOFTWARE AND/OR DOCUMENTATION, YOU AGREE TO THE LIMITED TERMS AND CONDITIONS.
  ******************************************************************************/
+#include <stdio.h>
+
 #include "vendor_info.h"
 #include "Port.h"
 #include "TypeC.h"

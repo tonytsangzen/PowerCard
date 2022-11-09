@@ -17,6 +17,8 @@
 #include "app_usb.h"
 #include "CH58x_common.h"
 #include "menu/ssd1315.h"
+#include "power_card.h"
+#include "utils/env.h"
 
 /*********************************************************************
  * GLOBAL TYPEDEFS

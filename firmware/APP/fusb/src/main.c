@@ -14,6 +14,8 @@
  * READ AND YOU AGREE TO THE LIMITED TERMS AND CONDITIONS. BY USING THIS
  * SOFTWARE AND/OR DOCUMENTATION, YOU AGREE TO THE LIMITED TERMS AND CONDITIONS.
  ******************************************************************************/
+#include <stdio.h> 
+
 #include "../core/core.h"
 #include "../core/modules/dpm.h"
 
@@ -43,13 +45,12 @@ void platform_set_debug(FSC_U8 port, FSC_BOOL enable);
  ******************************************************************************/
 static DevicePolicyPtr_t dpm;
 static Port_t ports[NUM_PORTS];           /* Array of ports */
-static char debug[16];
 /**
  * @brief Program entry point and container of main loop
  * @param None
  * @param None
  */
-int FusbInitial( void )
+void FusbInitial( void )
 {
 
     DPM_Init(&dpm);
@@ -60,45 +61,13 @@ int FusbInitial( void )
     core_initialize(&ports[0], FUSB300SlaveAddr);
 
     DPM_AddPort(dpm, &ports[0]);
-
-    MenuShowDebug(debug);
-
-}
-
-FSC_U32 timer_value;
-void FusbSetRequestVolatage(int output){
-	int requestVolatage = 100;
-
-	//find minimal voltage fix output
-	 for (int i = 0; i < ports[0].SrcCapsHeaderReceived.NumDataObjects; i++)
-	 {
-	        if (ports[0].SrcCapsReceived[i].PDO.SupplyType == pdoTypeFixed)
-	        {
-            	requestVolatage = ports[0].SrcCapsReceived[i].FPDOSupply.Voltage;
-	            if ( ports[0].SrcCapsReceived[i].FPDOSupply.Voltage * 50 > output + 800)
-	            {
-	                break;
-	            }
-	        }
-	}
-
-	if(requestVolatage != ports[0].snk_caps[0].FPDOSink.Voltage){
-		ports[0].snk_caps[0].FPDOSink.Voltage = requestVolatage;
-		ports[0].PolicyState = peSinkEvaluateCaps;
-	}
-	haveINTReady = TRUE;
-	int timeout = 200;
-
-	while(timeout--){
-		FusbLoop();
-		platform_delay_10us(100);
-	}
 }
 
 void FusbLoop(void){
     /* Disable the timer interrupt */
 	static PolicyState_t policy = -1;
 	static ConnectionState conn = -1;
+	static FSC_U32 timer_value;
 
 	if(haveINTReady){
 		core_state_machine(&ports[0]);
@@ -107,7 +76,6 @@ void FusbLoop(void){
 			conn = ports[0].ConnState;
 			policy = ports[0].PolicyState;
 		}
-		sprintf(debug, "C %d P %d %d\n", ports[0].ConnState , ports[0].PolicyState,  ports[0].irqCount);
 
 		haveINTReady = FALSE;
 	}
@@ -139,3 +107,34 @@ void FusbLoop(void){
         }
     }
 }
+
+void FusbSetRequestVolatage(int output){
+	int requestVolatage = 100;
+
+	//find minimal voltage fix output
+	 for (int i = 0; i < ports[0].SrcCapsHeaderReceived.NumDataObjects; i++)
+	 {
+	        if (ports[0].SrcCapsReceived[i].PDO.SupplyType == pdoTypeFixed)
+	        {
+            	requestVolatage = ports[0].SrcCapsReceived[i].FPDOSupply.Voltage;
+	            if ( ports[0].SrcCapsReceived[i].FPDOSupply.Voltage * 50 > output + 800)
+	            {
+	                break;
+	            }
+	        }
+	}
+
+	if(requestVolatage != ports[0].snk_caps[0].FPDOSink.Voltage){
+		ports[0].snk_caps[0].FPDOSink.Voltage = requestVolatage;
+		ports[0].PolicyState = peSinkEvaluateCaps;
+	}
+	haveINTReady = TRUE;
+	int timeout = 200;
+
+	while(timeout--){
+		FusbLoop();
+		platform_delay_10us(100);
+	}
+}
+
+

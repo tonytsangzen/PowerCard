@@ -4,6 +4,7 @@
 #define ENV_ID_VOL_CUR	0
 #define ENV_ID_CALIBRATION	1
 
+void EnvInit(void);
 
 int EnvLoadInt(int id);
 void EnvSaveInt(int id, int value);

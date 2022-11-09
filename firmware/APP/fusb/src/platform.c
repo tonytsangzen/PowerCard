@@ -153,6 +153,7 @@ FSC_U16 platform_get_pps_current(FSC_U8 port)
     return 0;
 }
 
+extern uint32_t TMOS_GetSystemClock( void );
 FSC_U32 platform_get_system_time(void)
 {
     return TMOS_GetSystemClock()*10/16;

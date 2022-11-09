@@ -16,7 +16,7 @@ void DrawChar(char* fb, int x, int y, char c){
 	char*p = fb + y*FB_WIDTH + x;
 
 	p[0] = 0;
-	memcpy(p + 1,  FontDefault[c], 5);
+	memcpy(p + 1,  FontDefault[(int)c], 5);
 	p[6] = 0;
 }
 
