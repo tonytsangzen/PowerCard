@@ -434,9 +434,8 @@ fw_info_t fwInfo = {0};
 
 
 __attribute__((section(".highcode")))
-int program(char*buf, int size){
+int program(unsigned char*buf, int size){
 	uint32_t paddr = fwInfo.loadaddr + fwInfo.length;
-	int ret = -1;
    //if we reach block boundary. do erase first
    if((paddr % EEPROM_BLOCK_SIZE) == 0){
 		while(FLASH_ROM_ERASE(paddr, size));
@@ -446,7 +445,7 @@ int program(char*buf, int size){
 }
 
 __attribute__((section(".highcode")))
-int program_process(char* buf, int size){
+int program_process(unsigned char* buf, int size){
 	/*init firmware info*/
 	if(fwInfo.smagic == 0){
 		fwInfo.smagic = 0xfeedbeef;
@@ -468,7 +467,8 @@ __attribute__((section(".highcode")))
 int  program_end(void){
 	fwInfo.emagic = 0xdeadbeef;		
 	fwInfo.crc = crc32((char*)fwInfo.loadaddr, fwInfo.length);
-	if(program((char*)&fwInfo, sizeof(fw_info_t)) == 0){
+	if(program((unsigned char*)&fwInfo, sizeof(fw_info_t)) == 0){
+		g_tcnt = 3000000 - 20;
 		return 0;
 	}
 	return -1;
@@ -476,7 +476,7 @@ int  program_end(void){
 
 __attribute__((section(".highcode")))
 void check_and_run(void){
-	fw_info_t *pinfo = APP_CODE_START_ADDR;
+	fw_info_t *pinfo = (fw_info_t*)APP_CODE_START_ADDR;
 	for(int i = 0; i < (FLASH_ROM_MAX_SIZE - APP_CODE_START_ADDR)/sizeof(fw_info_t); i++){
 		if(pinfo->smagic == 0xfeedbeef && pinfo->emagic == 0xdeadbeef){
 			if(pinfo->crc == crc32((char*)pinfo->loadaddr, pinfo->length)){
@@ -491,6 +491,7 @@ __attribute__((section(".highcode")))
 void myDevEP2_OUT_Deal(uint8_t l)
 {
     /* 用户可自定义 */
+	g_tcnt = 0;
 	for(int i = 0; i < l; i++)
 		xmodemReceive(EP2_Databuf[i]);
 	return;

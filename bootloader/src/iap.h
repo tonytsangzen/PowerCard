@@ -87,7 +87,7 @@ extern void my_memcpy(void *dst, const void *src, uint32_t l);
 
 extern void USB_DevTransProcess(void);
 
-int program_process(char* buf, int size);
+int program_process(unsigned char* buf, int size);
 int  program_end(void);
 void check_and_run(void);
 #endif /* _IAP_H_ */

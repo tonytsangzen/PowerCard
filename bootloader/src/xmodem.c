@@ -50,7 +50,7 @@ unsigned char rxState = 0;
 unsigned char rxCount;
 unsigned char rxPkgNum;
 unsigned char rxCrc[2];
-
+extern void myDevEP2_IN_Deal(uint8_t s);
 #define _outbyte myDevEP2_IN_Deal
 __attribute__((section(".highcode")))
 static int check(const unsigned char *buf, int sz)
@@ -90,7 +90,7 @@ void xmodemReceive(unsigned char ch)
 			if(rxCount == 134){
 				rxState = 0;
 				if(xbuff[2] == (uint8_t)(~xbuff[3])){
-					if(check(&xbuff[4], 128)){
+					if(check((const unsigned char*)&xbuff[4], 128)){
 						if(program_process(&xbuff[4], 128) == 0){
 							_outbyte(ACK);
 							break;
