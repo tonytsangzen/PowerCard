@@ -8,6 +8,7 @@
  * SPDX-License-Identifier: Apache-2.0
  *******************************************************************************/
 #include "iap.h"
+#include "crc32.h"
 
 #undef pSetupReqPak     /* 解决和外设库头文件冲突  */
 #define pSetupReqPak          ((PUSB_SETUP_REQ)EP0_Databuf)
@@ -19,16 +20,18 @@ void myDevEP2_OUT_Deal(uint8_t l);
 // 设备描述符
 const uint8_t MyDevDescr[] =
 {
-    0x12, 0x01, 0x10, 0x01, 0xFF, 0x80, 0x55,
-    DevEP0SIZE, 0x48, 0x43, 0xe0, 0x55,      // 厂商ID和产品ID
-    0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+	0x12,0x01,0x10,0x01,0xFF,0x00,0x00,DevEP0SIZE,
+	0x86,0x1A,0x23,0x75,0x63,0x02,0x00,0x02,
+    0x00,0x01
 };
 // 配置描述符
 const uint8_t MyCfgDescr[] =
 {
-    0x09, 0x02, 0x20, 0x00, 0x01, 0x01, 0x00, 0x80, 0x32, 0x09, 0x04, 0x00, 0x00,
-    0x02, 0xFF, 0x80, 0x55, 0x00, 0x07, 0x05, 0x82, 0x02, 0x40, 0x00, 0x00,
-    0x07, 0x05, 0x02, 0x02, 0x40, 0x00, 0x00
+	0x09,0x02,0x27,0x00,0x01,0x01,0x00,0x80,0xf0,              
+	0x09,0x04,0x00,0x00,0x03,0xff,0x01,0x02,0x00,
+    0x07,0x05,0x82,0x02,0x20,0x00,0x00,                        //批量上传端点
+    0x07,0x05,0x02,0x02,0x20,0x00,0x00,                        //批量下传端点
+    0x07,0x05,0x81,0x03,0x08,0x00,0x01
 };
 // 语言描述符
 const uint8_t MyLangDescr[] =
@@ -39,6 +42,19 @@ const uint8_t MyManuInfo[] =
 // 产品信息
 const uint8_t MyProdInfo[] =
 { 0x0C, 0x03, 'C', 0, 'H', 0, '5', 0, '8', 0, 'x', 0 };
+
+/*产品描述符*/
+const uint8_t StrDesc[28] =
+{
+  0x1C,0x03,0x55,0x00,0x53,0x00,0x42,0x00,
+  0x32,0x00,0x2E,0x00,0x30,0x00,0x2D,0x00,
+  0x53,0x00,0x65,0x00,0x72,0x00,0x69,0x00,
+  0x61,0x00,0x6C,0x00
+};
+
+const uint8_t Return1[2] = {0x31,0x00};
+const uint8_t Return2[2] = {0xC3,0x00};
+const uint8_t Return3[2] = {0x9F,0xEE};
 
 /**********************************************************/
 uint8_t DevConfig;
@@ -76,7 +92,6 @@ void USB_DevTransProcess(void)
     intflag = R8_USB_INT_FG;
     if (intflag & RB_UIF_TRANSFER)
     {
-        g_tcnt = 0; //USB有数据，清空超时计数
         if (intflag & RB_U_IS_NAK)
         {
         }
@@ -85,26 +100,6 @@ void USB_DevTransProcess(void)
         	// 分析操作令牌和端点号
             switch (R8_USB_INT_ST & (MASK_UIS_TOKEN | MASK_UIS_ENDP))
             {
-            case UIS_TOKEN_IN | 2:
-                R8_UEP2_CTRL = (R8_UEP2_CTRL & ~MASK_UEP_T_RES) | UEP_T_RES_NAK;
-                break;
-            case UIS_TOKEN_OUT | 2:
-            {
-                if (R8_USB_INT_ST & RB_UIS_TOG_OK)
-                {
-                    // 不同步的数据包将丢弃
-                    len = R8_USB_RX_LEN;
-                    my_memcpy(g_iap_cmd.other.buf, EP2_Databuf, len);
-                    myDevEP2_OUT_Deal(len);
-                }
-            }
-            break;
-
-
-            case UIS_TOKEN_IN | 1:
-                R8_UEP1_CTRL = (R8_UEP1_CTRL & ~MASK_UEP_T_RES) | UEP_T_RES_NAK;
-                break;
-
             case UIS_TOKEN_IN:
             {
                 switch (SetupReqCode)
@@ -130,9 +125,67 @@ void USB_DevTransProcess(void)
             break;
 
             case UIS_TOKEN_OUT:
-                //len = R8_USB_RX_LEN;
-                R8_UEP0_CTRL = UEP_R_RES_ACK | UEP_T_RES_NAK;
+                len = R8_USB_RX_LEN;
                 break;
+			
+			 case UIS_TOKEN_OUT | 1 :
+       		 {
+       		   if ( R8_USB_INT_ST & RB_UIS_TOG_OK )
+       		   {                       // 不同步的数据包将丢弃
+       		     len = R8_USB_RX_LEN;
+       		     //DevEP1_OUT_Deal( len );
+       		   }
+       		 }
+       		   break;
+
+       		 case UIS_TOKEN_IN | 1 :
+       		   R8_UEP1_CTRL = ( R8_UEP1_CTRL & ~MASK_UEP_T_RES ) | UEP_T_RES_NAK;
+       		   break;
+
+       		 case UIS_TOKEN_OUT | 2 :
+       		 {
+       		   if ( R8_USB_INT_ST & RB_UIS_TOG_OK )
+       		   {                       // 不同步的数据包将丢弃
+       		     len = R8_USB_RX_LEN;
+       		     myDevEP2_OUT_Deal( len );
+       		   }
+       		 }
+       		   break;
+
+       		 case UIS_TOKEN_IN | 2 :
+       		   R8_UEP2_CTRL = ( R8_UEP2_CTRL & ~MASK_UEP_T_RES ) | UEP_T_RES_NAK;
+       		   break;
+
+       		 case UIS_TOKEN_OUT | 3 :
+       		 {
+       		   if ( R8_USB_INT_ST & RB_UIS_TOG_OK )
+       		   {                       // 不同步的数据包将丢弃
+       		     len = R8_USB_RX_LEN;
+       		     //DevEP3_OUT_Deal( len );
+       		   }
+       		 }
+       		   break;
+
+			case UIS_TOKEN_IN | 3 :
+        	  R8_UEP3_CTRL = ( R8_UEP3_CTRL & ~MASK_UEP_T_RES ) | UEP_T_RES_NAK;
+        	  break;
+
+        	case UIS_TOKEN_OUT | 4 :
+        	{
+        	  if ( R8_USB_INT_ST & RB_UIS_TOG_OK )
+        	  {
+        	    R8_UEP4_CTRL ^= RB_UEP_R_TOG;
+        	    len = R8_USB_RX_LEN;
+        	    //DevEP4_OUT_Deal( len );
+        	  }
+        	}
+			break;
+
+        	case UIS_TOKEN_IN | 4 :
+        	  R8_UEP4_CTRL ^= RB_UEP_T_TOG;
+        	  R8_UEP4_CTRL = ( R8_UEP4_CTRL & ~MASK_UEP_T_RES ) | UEP_T_RES_NAK;
+        	  break;
+
             default:
                 break;
             }
@@ -150,7 +203,36 @@ void USB_DevTransProcess(void)
             errflag = 0;
             if ((pSetupReqPak->bRequestType & USB_REQ_TYP_MASK) != USB_REQ_TYP_STANDARD)
             {
-                errflag = 0xFF; /* 非标准请求 */
+				if( pSetupReqPak->bRequestType == 0xC0 )
+    		    {
+    		      if(SetupReqCode==0x5F)
+    		      {
+    		        pDescr = Return1;
+    		        len = sizeof(Return1);
+    		      }
+    		      else if(SetupReqCode==0x95)
+    		      {
+    		        if((pSetupReqPak->wValue)==0x18)
+    		        {
+    		          pDescr = Return2;
+    		          len = sizeof(Return2);
+    		        }
+    		        else if((pSetupReqPak->wValue)==0x06)
+    		        {
+    		          pDescr = Return3;
+    		          len = sizeof(Return3);
+    		        }
+    		      }
+    		      else
+    		      {
+    		        errflag = 0xFF;
+    		      }
+    		      memcpy(pEP0_DataBuf,pDescr,len);
+    		    }
+    		    else
+    		    {
+    		      len = 0;
+    		    }
             }
             else /* 标准请求 */
             {
@@ -330,75 +412,88 @@ void USB_DevTransProcess(void)
  *
  * @return  None.
  */
+ int xmodemReceive(char ch);
+
+#pragma pack(1)
+typedef struct {
+	uint32_t smagic;
+	uint8_t major;
+	uint8_t minor;
+	uint8_t flag;
+	uint8_t resv;
+	uint32_t loadaddr;
+	uint32_t length;
+	uint32_t crc;
+	uint32_t resv0;
+	uint32_t resv1;
+	uint32_t emagic;
+}fw_info_t;
+#pragma pack()
+
+fw_info_t fwInfo = {0};
+
+
+__attribute__((section(".highcode")))
+int program(char*buf, int size){
+	uint32_t paddr = fwInfo.loadaddr + fwInfo.length;
+	int ret = -1;
+   //if we reach block boundary. do erase first
+   if((paddr % EEPROM_BLOCK_SIZE) == 0){
+		while(FLASH_ROM_ERASE(paddr, size));
+   }
+
+   return FLASH_ROM_WRITE(paddr, (PUINT32)buf, size);
+}
+
+__attribute__((section(".highcode")))
+int program_process(char* buf, int size){
+	/*init firmware info*/
+	if(fwInfo.smagic == 0){
+		fwInfo.smagic = 0xfeedbeef;
+		//ToDO: get version form fw?
+		fwInfo.major = 0;
+		fwInfo.minor = 0;
+
+		fwInfo.loadaddr = APP_CODE_START_ADDR; 
+		fwInfo.length = 0;
+	}
+	if(program(buf, size) == 0){
+		fwInfo.length += size;
+		return 0;
+	}
+   	return -1;
+}
+
+__attribute__((section(".highcode")))
+int  program_end(void){
+	fwInfo.emagic = 0xdeadbeef;		
+	fwInfo.crc = crc32((char*)fwInfo.loadaddr, fwInfo.length);
+	if(program((char*)&fwInfo, sizeof(fw_info_t)) == 0){
+		return 0;
+	}
+	return -1;
+ }
+
+__attribute__((section(".highcode")))
+void check_and_run(void){
+	fw_info_t *pinfo = APP_CODE_START_ADDR;
+	for(int i = 0; i < (FLASH_ROM_MAX_SIZE - APP_CODE_START_ADDR)/sizeof(fw_info_t); i++){
+		if(pinfo->smagic == 0xfeedbeef && pinfo->emagic == 0xdeadbeef){
+			if(pinfo->crc == crc32((char*)pinfo->loadaddr, pinfo->length)){
+				void (*p)(void) = (void (*)(void))APP_CODE_START_ADDR;
+				p();
+			}
+		}
+		pinfo++;
+	}
+}
 __attribute__((section(".highcode")))
 void myDevEP2_OUT_Deal(uint8_t l)
 {
     /* 用户可自定义 */
-    uint8_t s = 0;
-    uint32_t addr;
-    switch (g_iap_cmd.other.buf[0])
-    {
-    case CMD_IAP_PROM:
-        if (g_iap_cmd.program.len == 0)
-        {
-            if (g_buf_write_ptr != 0)
-            {
-            	g_buf_write_ptr = ((g_buf_write_ptr + 3) & (~3)); //四字节对齐
-                s = FLASH_ROM_WRITE(g_flash_write_ptr, (PUINT32)g_write_buf, g_buf_write_ptr);
-                g_buf_write_ptr = 0;
-            }
-        }
-        else
-        {
-            my_memcpy(g_write_buf + g_buf_write_ptr, g_iap_cmd.program.buf, g_iap_cmd.program.len);
-            g_buf_write_ptr += g_iap_cmd.program.len;
-            if (g_buf_write_ptr >= 256)
-            {
-                s = FLASH_ROM_WRITE(g_flash_write_ptr, (PUINT32)g_write_buf, 256);
-                g_flash_write_ptr += 256;
-                g_buf_write_ptr = g_buf_write_ptr - 256;    //超出的长度
-                my_memcpy(g_write_buf, g_write_buf + 256, g_buf_write_ptr); //保存剩下的iap_cmd.program.buf + g_iap_cmd.program.len - g_buf_write_ptr
-            }
-        }
-        myDevEP2_IN_Deal(s);
-        break;
-    case CMD_IAP_ERASE:
-    	//这里可以添加地址判断，也可以直接擦除指定位置
-    	addr = (g_iap_cmd.erase.addr[0]
-				| (uint32_t) g_iap_cmd.erase.addr[1] << 8
-				| (uint32_t) g_iap_cmd.erase.addr[2] << 16
-				| (uint32_t) g_iap_cmd.erase.addr[3] << 24);
-    	if(addr == APP_CODE_START_ADDR)
-    	{
-			s = FLASH_ROM_ERASE(APP_CODE_START_ADDR, APP_CODE_END_ADDR - APP_CODE_START_ADDR);
-			g_buf_write_ptr = 0;    //计数清零
-			g_flash_write_ptr = APP_CODE_START_ADDR;
-    	}
-    	else
-    	{
-    		s = 0xfe;
-		}
-        myDevEP2_IN_Deal(s);
-        break;
-    case CMD_IAP_VERIFY:
-		my_memcpy(g_write_buf, g_iap_cmd.verify.buf, g_iap_cmd.verify.len);
-		addr = (g_iap_cmd.verify.addr[0]
-				| (uint32_t) g_iap_cmd.verify.addr[1] << 8
-				| (uint32_t) g_iap_cmd.verify.addr[2] << 16
-				| (uint32_t) g_iap_cmd.verify.addr[3] << 24);
-		s = FLASH_ROM_VERIFY(addr, g_write_buf, g_iap_cmd.verify.len);
-        myDevEP2_IN_Deal(s);
-        break;
-    case CMD_IAP_END:
-        /*结束升级，复位USB，跳转到app*/
-        R32_USB_CONTROL = 0;
-        jumpApp();
-        break;
-    default:
-        myDevEP2_IN_Deal(0xfe);
-        break;
-    }
-
+	for(int i = 0; i < l; i++)
+		xmodemReceive(EP2_Databuf[i]);
+	return;
 }
 
 /*******************************************************************************
@@ -411,8 +506,7 @@ __attribute__((section(".highcode")))
 void myDevEP2_IN_Deal(uint8_t s)
 {
     EP2_Databuf[64] = s;
-    EP2_Databuf[65] = 0;
-    R8_UEP2_T_LEN = 2;
+    R8_UEP2_T_LEN = 1;
     R8_UEP2_CTRL = (R8_UEP2_CTRL & ~MASK_UEP_T_RES) | UEP_T_RES_ACK; //enable send
 }
 

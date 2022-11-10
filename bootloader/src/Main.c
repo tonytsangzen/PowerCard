@@ -76,22 +76,29 @@ void mySetSysClock()
 __attribute__((section(".highcode")))
 void Main_Circulation()
 {
-    uint16_t j = 0;
+    uint32_t j = 0;
+	EP2_Databuf[64] = 'C';
     while (1)
     {
         j++;
-        if (j > 5)//100us处理一次数据
+        g_tcnt++;
         {
-            j = 0;
             USB_DevTransProcess();//采用查询方式进行usb操作，不使用中断。
         }
-        DelayUs(20);
-        g_tcnt++;
         if (g_tcnt > 3000000)
         {
             //1分钟没有操作，进入app
-            jumpApp();
+			g_tcnt = 0;
+            check_and_run();
         }
+
+		if(g_tcnt%10000 == 0){
+			myDevEP2_IN_Deal('C');
+		}
+		if(g_tcnt)
+			DelayUs(100);
+		else
+			DelayUs(20);
     }
 }
 
@@ -109,20 +116,20 @@ int main()
     mySetSysClock(); //为了精简程序体积，该函数比普通库的初始化函数有修改，只可以将时钟设置为60M
 
     //初始化引脚为上拉输入。为了减小程序大小，采用寄存器编写。
-   // R32_PB_PD_DRV &= ~GPIO_Pin_4;
-   // R32_PB_PU |= GPIO_Pin_4;
-   // R32_PB_DIR &= ~GPIO_Pin_4;
+    R32_PB_PD_DRV &= ~GPIO_Pin_17;
+    R32_PB_PU |= GPIO_Pin_17;
+    R32_PB_DIR &= ~GPIO_Pin_17;
    // //
-   // DelayMs(10);
-   // if (GPIOB_ReadPortPin(GPIO_Pin_4))
-   // {
-   //     DelayMs(5);
-   //     if (GPIOB_ReadPortPin(GPIO_Pin_4))
-   //     {
-   //         //启动前判断是否进入iap，没有按键按下
-            jumpApp();
-   //     }
-   // }
+    DelayMs(10);
+    if (GPIOB_ReadPortPin(GPIO_Pin_17))
+    {
+        DelayMs(5);
+        if (GPIOB_ReadPortPin(GPIO_Pin_17))
+        {
+            //启动前判断是否进入iap，没有按键按下
+			check_and_run();
+        }
+    }
 
 
     /* USB初始化 */

@@ -48,7 +48,6 @@ include_directories(BLE_LIB
                     USB_LIB
                     RVMSIS  
                     StdPeriphDriver/inc
-                    printf
 					APP
                     APP/include
 					APP/Profile/include/

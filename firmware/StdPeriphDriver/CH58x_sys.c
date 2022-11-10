@@ -382,6 +382,15 @@ void _putchar(char character)
 #elif DEBUG == Debug_UART3       
         while(R8_UART3_TFC == UART_FIFO_SIZE);                  /* 等待数据发送 */
         R8_UART3_THR = (uint8_t)character; /* 发送数据 */
+#elif DEBUG == Debug_CDC
+		static uint8_t buf[64];
+		static uint8_t len = 0;
+		buf[len] = character;
+		len++;
+		if(character == '\n' || len == 64){
+			USBSendData(&character, len);
+			len = 0;
+		}
 #endif
 }
 

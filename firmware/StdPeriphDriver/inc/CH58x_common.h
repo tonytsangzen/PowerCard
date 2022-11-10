@@ -38,7 +38,9 @@
 #define Debug_UART1        1
 #define Debug_UART2        2
 #define Debug_UART3        3
-
+#define Debug_CDC		   4
+#undef	DEBUG
+#define DEBUG			   Debug_CDC
 #ifdef DEBUG
 #include <stdio.h>
 #endif
